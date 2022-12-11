@@ -1,0 +1,723 @@
+Set up R w/ AWS
+```{r}
+keyfile = list.files(path=".", pattern="accessKeys.csv", full.names=TRUE)
+if (identical(keyfile, character(0))){
+  stop("ERROR: AWS key file not found")
+} 
+
+keyTable <- read.csv(keyfile, header = T) # *accessKeys.csv == the CSV downloaded from AWS containing your Access & Secret keys
+AWS_ACCESS_KEY_ID <- as.character(keyTable$Access.key.ID)
+AWS_SECRET_ACCESS_KEY <- as.character(keyTable$Secret.access.key)
+
+#activate
+Sys.setenv("AWS_ACCESS_KEY_ID" = AWS_ACCESS_KEY_ID,
+           "AWS_SECRET_ACCESS_KEY" = AWS_SECRET_ACCESS_KEY,
+           "AWS_DEFAULT_REGION" = "eu-west-1") 
+```
+
+Load library
+```{r, message=FALSE}
+library(jsonlite)
+library(data.table)
+library(stringr)
+library(tidyverse)
+library(ggplot2)
+library(reshape2)
+library(tidyr)
+library(paletteer)
+library("aws.comprehend")
+```
+
+Load json file
+```{r}
+jp_1 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_01.json',flatten = T)
+
+jp_2 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_02.json',flatten = T)
+
+jp_3 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_03.json',flatten = T)
+
+jp_4 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_04.json',flatten = T)
+
+jp_5 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_05.json',flatten = T)
+
+jp_6 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_06.json',flatten = T)
+
+jp_7 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_07.json',flatten = T)
+
+jp_8 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_08.json',flatten = T)
+
+jp_9 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_09.json',flatten = T)
+
+jp_10 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_10.json',flatten = T)
+
+jp_11 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_11.json',flatten = T)
+
+jp_12 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_12.json',flatten = T)
+
+jp_13 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_13.json',flatten = T)
+
+jp_14 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_14.json',flatten = T)
+
+jp_15 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_15.json',flatten = T)
+
+jp_16 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_16.json',flatten = T)
+
+jp_17 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/JP-json/asrOutput_JP_17.json',flatten = T)
+
+n_jp <- melt(data.frame(str_length(jp_1$results$transcripts$transcript),
+                        str_length(jp_2$results$transcripts$transcript),
+                        str_length(jp_3$results$transcripts$transcript),
+                        str_length(jp_4$results$transcripts$transcript),
+                        str_length(jp_5$results$transcripts$transcript),
+                        str_length(jp_6$results$transcripts$transcript),
+                        str_length(jp_7$results$transcripts$transcript),
+                        str_length(jp_8$results$transcripts$transcript),
+                        str_length(jp_9$results$transcripts$transcript),
+                        str_length(jp_10$results$transcripts$transcript),
+                        str_length(jp_11$results$transcripts$transcript),
+                        str_length(jp_12$results$transcripts$transcript),
+                        str_length(jp_13$results$transcripts$transcript),
+                        str_length(jp_14$results$transcripts$transcript),
+                        str_length(jp_15$results$transcripts$transcript),
+                        str_length(jp_16$results$transcripts$transcript),
+                        str_length(jp_17$results$transcripts$transcript)))
+n_jp
+```
+
+# Sentiment analysis of jp_1
+```{r}
+jp_1_1 <- detect_sentiment(substring(jp_1$results$transcripts$transcript,1,
+                        str_length(jp_1$results$transcripts$transcript)/3))
+jp_1_1 <- jp_1_1 %>% mutate(episode = 1,
+                            Nchar_episode = 
+                              str_length(jp_1$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_1$results$transcripts$transcript)/3)
+
+
+jp_1_2 <- detect_sentiment(substring(jp_1$results$transcripts$transcript,
+                      str_length(jp_1$results$transcripts$transcript)/3+1,
+                      str_length(jp_1$results$transcripts$transcript)/3*2))
+jp_1_2 <- jp_1_2 %>% mutate(episode = 1,
+                            Nchar_episode = 
+                              str_length(jp_1$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_1$results$transcripts$transcript)/3)
+
+jp_1_3 <- detect_sentiment(substring(jp_1$results$transcripts$transcript,
+                    str_length(jp_1$results$transcripts$transcript)/3*2+1,
+                    str_length(jp_1$results$transcripts$transcript)))
+jp_1_3 <- jp_1_3 %>% mutate(episode = 1,
+                            Nchar_episode = 
+                              str_length(jp_1$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_1$results$transcripts$transcript)/3)
+
+data.frame(rbindlist(list(jp_1_1, jp_1_2, jp_1_3)))
+```
+
+# Sentiment analysis of jp_2
+```{r}
+jp_2_1 <- detect_sentiment(substring(jp_2$results$transcripts$transcript,1,
+                    round(str_length(jp_2$results$transcripts$transcript)/3)))
+jp_2_1 <- jp_2_1 %>% mutate(episode = 2,
+                            Nchar_episode = 
+                              str_length(jp_2$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_2$results$transcripts$transcript)/3))
+
+jp_2_2 <- detect_sentiment(substring(jp_2$results$transcripts$transcript,
+                  round(str_length(jp_2$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_2$results$transcripts$transcript)/3*2)))
+jp_2_2 <- jp_2_2 %>% mutate(episode = 2,
+                            Nchar_episode = 
+                              str_length(jp_2$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_2$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_2$results$transcripts$transcript)/3))
+
+jp_2_3 <- detect_sentiment(substring(jp_2$results$transcripts$transcript,
+                  round(str_length(jp_2$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_2$results$transcripts$transcript)))
+jp_2_3 <- jp_2_3 %>% mutate(episode = 2,
+                            Nchar_episode = 
+                              str_length(jp_2$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_2$results$transcripts$transcript)-
+                    round(str_length(jp_2$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_2_1, jp_2_2, jp_2_3)))
+```
+
+# Sentiment analysis of jp_3
+```{r}
+jp_3_1 <- detect_sentiment(substring(jp_3$results$transcripts$transcript,1,
+                    round(str_length(jp_3$results$transcripts$transcript)/3)))
+jp_3_1 <- jp_3_1 %>% mutate(episode = 3,
+                            Nchar_episode = 
+                              str_length(jp_3$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_3$results$transcripts$transcript)/3))
+
+jp_3_2 <- detect_sentiment(substring(jp_3$results$transcripts$transcript,
+                  round(str_length(jp_3$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_3$results$transcripts$transcript)/3*2)))
+jp_3_2 <- jp_3_2 %>% mutate(episode = 3,
+                            Nchar_episode = 
+                              str_length(jp_3$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_3$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_3$results$transcripts$transcript)/3))
+
+jp_3_3 <- detect_sentiment(substring(jp_3$results$transcripts$transcript,
+                  round(str_length(jp_3$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_3$results$transcripts$transcript)))
+jp_3_3 <- jp_3_3 %>% mutate(episode = 3,
+                            Nchar_episode = 
+                              str_length(jp_3$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_3$results$transcripts$transcript)-
+                    round(str_length(jp_3$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_3_1, jp_3_2, jp_3_3)))
+```
+
+# Sentiment analysis of jp_4
+```{r}
+jp_4_1 <- detect_sentiment(substring(jp_4$results$transcripts$transcript,1,
+                    round(str_length(jp_4$results$transcripts$transcript)/3)))
+jp_4_1 <- jp_4_1 %>% mutate(episode = 4,
+                            Nchar_episode = 
+                              str_length(jp_4$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_4$results$transcripts$transcript)/3))
+
+jp_4_2 <- detect_sentiment(substring(jp_4$results$transcripts$transcript,
+                  round(str_length(jp_4$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_4$results$transcripts$transcript)/3*2)))
+jp_4_2 <- jp_4_2 %>% mutate(episode = 4,
+                            Nchar_episode = 
+                              str_length(jp_4$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_4$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_4$results$transcripts$transcript)/3))
+
+jp_4_3 <- detect_sentiment(substring(jp_4$results$transcripts$transcript,
+                  round(str_length(jp_4$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_4$results$transcripts$transcript)))
+jp_4_3 <- jp_4_3 %>% mutate(episode = 4,
+                            Nchar_episode = 
+                              str_length(jp_4$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_4$results$transcripts$transcript)-
+                    round(str_length(jp_4$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_4_1, jp_4_2, jp_4_3)))
+```
+
+# Sentiment analysis of jp_5
+```{r}
+jp_5_1 <- detect_sentiment(substring(jp_5$results$transcripts$transcript,1,
+                    round(str_length(jp_5$results$transcripts$transcript)/3)))
+jp_5_1 <- jp_5_1 %>% mutate(episode = 5,
+                            Nchar_episode = 
+                              str_length(jp_5$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_5$results$transcripts$transcript)/3))
+
+jp_5_2 <- detect_sentiment(substring(jp_5$results$transcripts$transcript,
+                  round(str_length(jp_5$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_5$results$transcripts$transcript)/3*2)))
+jp_5_2 <- jp_5_2 %>% mutate(episode = 5,
+                            Nchar_episode = 
+                              str_length(jp_5$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_5$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_5$results$transcripts$transcript)/3))
+
+jp_5_3 <- detect_sentiment(substring(jp_5$results$transcripts$transcript,
+                  round(str_length(jp_5$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_5$results$transcripts$transcript)))
+jp_5_3 <- jp_5_3 %>% mutate(episode = 5,
+                            Nchar_episode = 
+                              str_length(jp_5$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_5$results$transcripts$transcript)-
+                    round(str_length(jp_5$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_5_1, jp_5_2, jp_5_3)))
+```
+
+# Sentiment analysis of jp_6
+```{r}
+jp_6_1 <- detect_sentiment(substring(jp_6$results$transcripts$transcript,1,
+                    round(str_length(jp_6$results$transcripts$transcript)/3)))
+jp_6_1 <- jp_6_1 %>% mutate(episode = 6,
+                            Nchar_episode = 
+                              str_length(jp_6$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_6$results$transcripts$transcript)/3))
+
+jp_6_2 <- detect_sentiment(substring(jp_6$results$transcripts$transcript,
+                  round(str_length(jp_6$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_6$results$transcripts$transcript)/3*2)))
+jp_6_2 <- jp_6_2 %>% mutate(episode = 6,
+                            Nchar_episode = 
+                              str_length(jp_6$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_6$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_6$results$transcripts$transcript)/3))
+
+jp_6_3 <- detect_sentiment(substring(jp_6$results$transcripts$transcript,
+                  round(str_length(jp_6$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_6$results$transcripts$transcript)))
+jp_6_3 <- jp_6_3 %>% mutate(episode = 6,
+                            Nchar_episode = 
+                              str_length(jp_6$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_6$results$transcripts$transcript)-
+                    round(str_length(jp_6$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_6_1, jp_6_2, jp_6_3)))
+```
+
+# Sentiment analysis of jp_7
+```{r}
+jp_7_1 <- detect_sentiment(substring(jp_7$results$transcripts$transcript,1,
+                    round(str_length(jp_7$results$transcripts$transcript)/3)))
+jp_7_1 <- jp_7_1 %>% mutate(episode = 7,
+                            Nchar_episode = 
+                              str_length(jp_7$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_7$results$transcripts$transcript)/3))
+
+jp_7_2 <- detect_sentiment(substring(jp_7$results$transcripts$transcript,
+                  round(str_length(jp_7$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_7$results$transcripts$transcript)/3*2)))
+jp_7_2 <- jp_7_2 %>% mutate(episode = 7,
+                            Nchar_episode = 
+                              str_length(jp_7$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_7$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_7$results$transcripts$transcript)/3))
+
+jp_7_3 <- detect_sentiment(substring(jp_7$results$transcripts$transcript,
+                  round(str_length(jp_7$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_7$results$transcripts$transcript)))
+jp_7_3 <- jp_7_3 %>% mutate(episode = 7,
+                            Nchar_episode = 
+                              str_length(jp_7$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_7$results$transcripts$transcript)-
+                    round(str_length(jp_7$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_7_1, jp_7_2, jp_7_3)))
+```
+
+# Sentiment analysis of jp_8
+```{r}
+jp_8_1 <- detect_sentiment(substring(jp_8$results$transcripts$transcript,1,
+                    round(str_length(jp_8$results$transcripts$transcript)/3)))
+jp_8_1 <- jp_8_1 %>% mutate(episode = 8,
+                            Nchar_episode = 
+                              str_length(jp_8$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_8$results$transcripts$transcript)/3))
+
+jp_8_2 <- detect_sentiment(substring(jp_8$results$transcripts$transcript,
+                  round(str_length(jp_8$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_8$results$transcripts$transcript)/3*2)))
+jp_8_2 <- jp_8_2 %>% mutate(episode = 8,
+                            Nchar_episode = 
+                              str_length(jp_8$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_8$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_8$results$transcripts$transcript)/3))
+
+jp_8_3 <- detect_sentiment(substring(jp_8$results$transcripts$transcript,
+                  round(str_length(jp_8$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_8$results$transcripts$transcript)))
+jp_8_3 <- jp_8_3 %>% mutate(episode = 8,
+                            Nchar_episode = 
+                              str_length(jp_8$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_8$results$transcripts$transcript)-
+                    round(str_length(jp_8$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_8_1, jp_8_2, jp_8_3)))
+```
+
+# Sentiment analysis of jp_9
+```{r}
+jp_9_1 <- detect_sentiment(substring(jp_9$results$transcripts$transcript,1,
+                    round(str_length(jp_9$results$transcripts$transcript)/4)))
+
+jp_9_1 <- jp_9_1 %>% mutate(episode = 9,
+                            Nchar_episode = 
+                              str_length(jp_9$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_9$results$transcripts$transcript)/4))
+
+
+jp_9_2 <- detect_sentiment(substring(jp_9$results$transcripts$transcript,
+                  round(str_length(jp_9$results$transcripts$transcript)/4)+1,
+                  round(str_length(jp_9$results$transcripts$transcript)/4*2)))
+jp_9_2 <- jp_9_2 %>% mutate(episode = 9,
+                            Nchar_episode = 
+                              str_length(jp_9$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_9$results$transcripts$transcript)/4*2)
+                    -round(str_length(jp_9$results$transcripts$transcript)/4))
+
+jp_9_3 <- detect_sentiment(substring(jp_9$results$transcripts$transcript,
+                round(str_length(jp_9$results$transcripts$transcript)/4*2)+1,
+                round(str_length(jp_9$results$transcripts$transcript)/4*3)))
+jp_9_3 <- jp_9_3 %>% mutate(episode = 9,
+                            Nchar_episode = 
+                              str_length(jp_9$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_9$results$transcripts$transcript)/4*3)
+                  -round(str_length(jp_9$results$transcripts$transcript)/4*2))
+
+jp_9_4 <- detect_sentiment(substring(jp_9$results$transcripts$transcript,
+                round(str_length(jp_9$results$transcripts$transcript)/4*3)+1,
+                str_length(jp_9$results$transcripts$transcript)))
+jp_9_4 <- jp_9_4 %>% mutate(episode = 9,
+                            Nchar_episode = 
+                              str_length(jp_9$results$transcripts$transcript),
+                            Nchar_section = 
+                    str_length(jp_9$results$transcripts$transcript)
+                  -round(str_length(jp_9$results$transcripts$transcript)/4*3))
+
+data.frame(rbindlist(list(jp_9_1, jp_9_2, jp_9_3, jp_9_4)))
+```
+
+
+# Sentiment analysis of jp_10
+```{r}
+jp_10_1 <- detect_sentiment(substring(jp_10$results$transcripts$transcript,1,
+                    round(str_length(jp_10$results$transcripts$transcript)/3)))
+jp_10_1 <- jp_10_1 %>% mutate(episode = 10,
+                            Nchar_episode = 
+                              str_length(jp_10$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_10$results$transcripts$transcript)/3))
+
+jp_10_2 <- detect_sentiment(substring(jp_10$results$transcripts$transcript,
+                  round(str_length(jp_10$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_10$results$transcripts$transcript)/3*2)))
+jp_10_2 <- jp_10_2 %>% mutate(episode = 10,
+                            Nchar_episode = 
+                              str_length(jp_10$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_10$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_10$results$transcripts$transcript)/3))
+
+jp_10_3 <- detect_sentiment(substring(jp_10$results$transcripts$transcript,
+                  round(str_length(jp_10$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_10$results$transcripts$transcript)))
+jp_10_3 <- jp_10_3 %>% mutate(episode = 10,
+                            Nchar_episode = 
+                              str_length(jp_10$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_10$results$transcripts$transcript)-
+                    round(str_length(jp_10$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_10_1, jp_10_2, jp_10_3)))
+```
+
+# Sentiment analysis of jp_11
+```{r}
+jp_11_1 <- detect_sentiment(substring(jp_11$results$transcripts$transcript,1,
+                    round(str_length(jp_11$results$transcripts$transcript)/3)))
+jp_11_1 <- jp_11_1 %>% mutate(episode = 11,
+                            Nchar_episode = 
+                              str_length(jp_11$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_11$results$transcripts$transcript)/3))
+
+jp_11_2 <- detect_sentiment(substring(jp_11$results$transcripts$transcript,
+                  round(str_length(jp_11$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_11$results$transcripts$transcript)/3*2)))
+jp_11_2 <- jp_11_2 %>% mutate(episode = 11,
+                            Nchar_episode = 
+                              str_length(jp_11$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_11$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_11$results$transcripts$transcript)/3))
+
+jp_11_3 <- detect_sentiment(substring(jp_11$results$transcripts$transcript,
+                  round(str_length(jp_11$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_11$results$transcripts$transcript)))
+jp_11_3 <- jp_11_3 %>% mutate(episode = 11,
+                            Nchar_episode = 
+                              str_length(jp_11$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_11$results$transcripts$transcript)-
+                    round(str_length(jp_11$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_11_1, jp_11_2, jp_11_3)))
+```
+
+# Sentiment analysis of jp_12
+```{r}
+jp_12_1 <- detect_sentiment(substring(jp_12$results$transcripts$transcript,1,
+                    round(str_length(jp_12$results$transcripts$transcript)/3)))
+jp_12_1 <- jp_12_1 %>% mutate(episode = 12,
+                            Nchar_episode = 
+                              str_length(jp_12$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_12$results$transcripts$transcript)/3))
+
+jp_12_2 <- detect_sentiment(substring(jp_12$results$transcripts$transcript,
+                  round(str_length(jp_12$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_12$results$transcripts$transcript)/3*2)))
+jp_12_2 <- jp_12_2 %>% mutate(episode = 12,
+                            Nchar_episode = 
+                              str_length(jp_12$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_12$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_12$results$transcripts$transcript)/3))
+
+jp_12_3 <- detect_sentiment(substring(jp_12$results$transcripts$transcript,
+                  round(str_length(jp_12$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_12$results$transcripts$transcript)))
+jp_12_3 <- jp_12_3 %>% mutate(episode = 12,
+                            Nchar_episode = 
+                              str_length(jp_12$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_12$results$transcripts$transcript)-
+                    round(str_length(jp_12$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_12_1, jp_12_2, jp_12_3)))
+```
+
+# Sentiment analysis of jp_13
+```{r}
+jp_13_1 <- detect_sentiment(substring(jp_13$results$transcripts$transcript,1,
+                    round(str_length(jp_13$results$transcripts$transcript)/3)))
+jp_13_1 <- jp_13_1 %>% mutate(episode = 13,
+                            Nchar_episode = 
+                              str_length(jp_13$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_13$results$transcripts$transcript)/3))
+
+jp_13_2 <- detect_sentiment(substring(jp_13$results$transcripts$transcript,
+                  round(str_length(jp_13$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_13$results$transcripts$transcript)/3*2)))
+jp_13_2 <- jp_13_2 %>% mutate(episode = 13,
+                            Nchar_episode = 
+                              str_length(jp_13$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_13$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_13$results$transcripts$transcript)/3))
+
+jp_13_3 <- detect_sentiment(substring(jp_13$results$transcripts$transcript,
+                  round(str_length(jp_13$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_13$results$transcripts$transcript)))
+jp_13_3 <- jp_13_3 %>% mutate(episode = 13,
+                            Nchar_episode = 
+                              str_length(jp_13$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_13$results$transcripts$transcript)-
+                    round(str_length(jp_13$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_13_1, jp_13_2, jp_13_3)))
+```
+
+# Sentiment analysis of jp_14
+```{r}
+jp_14_1 <- detect_sentiment(substring(jp_14$results$transcripts$transcript,1,
+                    round(str_length(jp_14$results$transcripts$transcript)/3)))
+jp_14_1 <- jp_14_1 %>% mutate(episode = 14,
+                            Nchar_episode = 
+                              str_length(jp_14$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_14$results$transcripts$transcript)/3))
+
+jp_14_2 <- detect_sentiment(substring(jp_14$results$transcripts$transcript,
+                  round(str_length(jp_14$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_14$results$transcripts$transcript)/3*2)))
+jp_14_2 <- jp_14_2 %>% mutate(episode = 14,
+                            Nchar_episode = 
+                              str_length(jp_14$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_14$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_14$results$transcripts$transcript)/3))
+
+jp_14_3 <- detect_sentiment(substring(jp_14$results$transcripts$transcript,
+                  round(str_length(jp_14$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_14$results$transcripts$transcript)))
+jp_14_3 <- jp_14_3 %>% mutate(episode = 14,
+                            Nchar_episode = 
+                              str_length(jp_14$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_14$results$transcripts$transcript)-
+                    round(str_length(jp_14$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_14_1, jp_14_2, jp_14_3)))
+```
+
+
+# Sentiment analysis of jp_15
+```{r}
+jp_15_1 <- detect_sentiment(substring(jp_15$results$transcripts$transcript,1,
+                    round(str_length(jp_15$results$transcripts$transcript)/3)))
+jp_15_1 <- jp_15_1 %>% mutate(episode = 15,
+                            Nchar_episode = 
+                              str_length(jp_15$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_15$results$transcripts$transcript)/3))
+
+jp_15_2 <- detect_sentiment(substring(jp_15$results$transcripts$transcript,
+                  round(str_length(jp_15$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_15$results$transcripts$transcript)/3*2)))
+jp_15_2 <- jp_15_2 %>% mutate(episode = 15,
+                            Nchar_episode = 
+                              str_length(jp_15$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_15$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_15$results$transcripts$transcript)/3))
+
+jp_15_3 <- detect_sentiment(substring(jp_15$results$transcripts$transcript,
+                  round(str_length(jp_15$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_15$results$transcripts$transcript)))
+jp_15_3 <- jp_15_3 %>% mutate(episode = 15,
+                            Nchar_episode = 
+                              str_length(jp_15$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_15$results$transcripts$transcript)-
+                    round(str_length(jp_15$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_15_1, jp_15_2, jp_15_3)))
+```
+
+# Sentiment analysis of jp_16
+```{r}
+jp_16_1 <- detect_sentiment(substring(jp_16$results$transcripts$transcript,1,
+                    round(str_length(jp_16$results$transcripts$transcript)/3)))
+jp_16_1 <- jp_16_1 %>% mutate(episode = 16,
+                            Nchar_episode = 
+                              str_length(jp_16$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_16$results$transcripts$transcript)/3))
+
+jp_16_2 <- detect_sentiment(substring(jp_16$results$transcripts$transcript,
+                  round(str_length(jp_16$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_16$results$transcripts$transcript)/3*2)))
+jp_16_2 <- jp_16_2 %>% mutate(episode = 16,
+                            Nchar_episode = 
+                              str_length(jp_16$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_16$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_16$results$transcripts$transcript)/3))
+
+jp_16_3 <- detect_sentiment(substring(jp_16$results$transcripts$transcript,
+                  round(str_length(jp_16$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_16$results$transcripts$transcript)))
+jp_16_3 <- jp_16_3 %>% mutate(episode = 16,
+                            Nchar_episode = 
+                              str_length(jp_16$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_16$results$transcripts$transcript)-
+                    round(str_length(jp_16$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_16_1, jp_16_2, jp_16_3)))
+```
+
+# Sentiment analysis of jp_17
+```{r}
+jp_17_1 <- detect_sentiment(substring(jp_17$results$transcripts$transcript,1,
+                    round(str_length(jp_17$results$transcripts$transcript)/3)))
+jp_17_1 <- jp_17_1 %>% mutate(episode = 17,
+                            Nchar_episode = 
+                              str_length(jp_17$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_17$results$transcripts$transcript)/3))
+
+jp_17_2 <- detect_sentiment(substring(jp_17$results$transcripts$transcript,
+                  round(str_length(jp_17$results$transcripts$transcript)/3)+1,
+                  round(str_length(jp_17$results$transcripts$transcript)/3*2)))
+jp_17_2 <- jp_17_2 %>% mutate(episode = 17,
+                            Nchar_episode = 
+                              str_length(jp_17$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(jp_17$results$transcripts$transcript)/3*2)-
+                    round(str_length(jp_17$results$transcripts$transcript)/3))
+
+jp_17_3 <- detect_sentiment(substring(jp_17$results$transcripts$transcript,
+                  round(str_length(jp_17$results$transcripts$transcript)/3*2)+1,
+                  str_length(jp_17$results$transcripts$transcript)))
+jp_17_3 <- jp_17_3 %>% mutate(episode = 17,
+                            Nchar_episode = 
+                              str_length(jp_17$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(jp_17$results$transcripts$transcript)-
+                    round(str_length(jp_17$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(jp_17_1, jp_17_2, jp_17_3)))
+```
+
+# Calculate sentiment for all-jp-combined and each episode
+```{r}
+df_jp <- rbind.data.frame(jp_1_1, jp_1_2, jp_1_3,   jp_2_1, jp_2_2, jp_2_3,
+                          jp_3_1, jp_3_2, jp_3_3,   jp_4_1, jp_4_2, jp_4_3,
+                          jp_5_1, jp_5_2, jp_5_3,   jp_6_1, jp_6_2, jp_6_3,
+                          jp_7_1, jp_7_2, jp_7_3,   jp_8_1, jp_8_2, jp_8_3,
+                          jp_9_1, jp_9_2, jp_9_3, jp_9_4,
+                          jp_10_1, jp_10_2, jp_10_3,  jp_11_1, jp_11_2, jp_11_3,
+                          jp_12_1, jp_12_2, jp_12_3,  jp_13_1, jp_13_2, jp_13_3,
+                          jp_14_1, jp_14_2, jp_14_3,  jp_15_1, jp_15_2, jp_15_3,
+                          jp_16_1, jp_16_2, jp_16_3,  jp_17_1, jp_17_2, jp_17_3)
+
+df_jp <- df_jp %>% mutate(
+                 Mixed_in_episode = Mixed * Nchar_section / Nchar_episode,
+                 Negative_in_episode = Negative * Nchar_section / Nchar_episode,
+                 Neutral_in_episode = Neutral * Nchar_section / Nchar_episode,
+                 Positive_in_episode = Positive * Nchar_section / Nchar_episode)
+```
+
+# Organize it into episode data
+```{r}
+df_jp_epi <- df_jp %>% group_by(episode) %>% 
+  summarise(Mixed = sum(Mixed_in_episode),
+            Negative = sum(Negative_in_episode),
+            Neutral = sum(Neutral_in_episode),
+            Positive = sum(Positive_in_episode),.groups = 'keep') %>% 
+    distinct() %>% 
+    melt(id.var = 'episode', variable.name = "Sentiment",
+         value.name = "percentage") %>% arrange(episode)
+```
+
+# Stacked bar Chart
+```{r}
+ggplot(df_jp_epi, aes(x= episode, y= percentage, fill = Sentiment)) +
+  geom_bar(position="fill", stat="identity") +
+  labs(x= "Episode No.",
+       y= "Percentage",
+       title = "Sentiment of episodes in Chapter Greed Island",
+       subtitle = "In Japanese version") +
+  scale_x_continuous(breaks = seq(1, 17, by = 1)) +
+  scale_y_continuous(labels = scales::percent, breaks = seq(0, 1, by = 0.2)) +
+  scale_fill_manual(breaks= c("Positive", "Negative", "Mixed", "Neutral"),
+                    values = c("seagreen3", "coral2","bisque3", "gray86")) +
+  theme_classic()
+```
+
+# Create data frame for whole chapter in JP version
+```{r}
+df_jp <- df_jp %>% mutate(
+              Mixed_in_chapter = Mixed * Nchar_section / sum(n_jp$value),
+              Negative_in_chapter = Negative * Nchar_section / sum(n_jp$value),
+              Neutral_in_chapter = Neutral * Nchar_section / sum(n_jp$value),
+              Positive_in_chapter = Positive * Nchar_section / sum(n_jp$value),
+              Ver = "JP")
+
+df_jp_cha <- df_jp %>% group_by(Ver) %>% 
+  summarise(Mixed = sum(Mixed_in_chapter),
+            Negative = sum(Negative_in_chapter),
+            Neutral = sum(Neutral_in_chapter),
+            Positive = sum(Positive_in_chapter),.groups = 'keep') %>% 
+    melt(id.var = 'Ver', variable.name = "Sentiment",
+         value.name = "percentage")
+```
