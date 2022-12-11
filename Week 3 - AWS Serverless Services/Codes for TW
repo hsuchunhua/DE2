@@ -1,0 +1,765 @@
+Set up R w/ AWS
+```{r}
+keyfile = list.files(path=".", pattern="accessKeys.csv", full.names=TRUE)
+if (identical(keyfile, character(0))){
+  stop("ERROR: AWS key file not found")
+} 
+
+keyTable <- read.csv(keyfile, header = T) # *accessKeys.csv == the CSV downloaded from AWS containing your Access & Secret keys
+AWS_ACCESS_KEY_ID <- as.character(keyTable$Access.key.ID)
+AWS_SECRET_ACCESS_KEY <- as.character(keyTable$Secret.access.key)
+
+#activate
+Sys.setenv("AWS_ACCESS_KEY_ID" = AWS_ACCESS_KEY_ID,
+           "AWS_SECRET_ACCESS_KEY" = AWS_SECRET_ACCESS_KEY,
+           "AWS_DEFAULT_REGION" = "eu-west-1") 
+```
+
+Load library
+```{r, message=F}
+library(jsonlite)
+library(data.table)
+library(stringr)
+library(tidyverse)
+library(ggplot2)
+library(reshape2)
+library(tidyr)
+library(paletteer)
+library("aws.comprehend")
+```
+
+Load json file
+```{r}
+tw_1 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_01.json',flatten = T)
+
+tw_2 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_02.json',flatten = T)
+
+tw_3 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_03.json',flatten = T)
+
+tw_4 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_04.json',flatten = T)
+
+tw_5 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_05.json',flatten = T)
+
+tw_6 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_06.json',flatten = T)
+
+tw_7 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_07.json',flatten = T)
+
+tw_8 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_08.json',flatten = T)
+
+tw_9 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_09.json',flatten = T)
+
+tw_10 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_10.json',flatten = T)
+
+tw_11 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_11.json',flatten = T)
+
+tw_12 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_12.json',flatten = T)
+
+tw_13 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_13.json',flatten = T)
+
+tw_14 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_14.json',flatten = T)
+
+tw_15 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_15.json',flatten = T)
+
+tw_16 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_16.json',flatten = T)
+
+tw_17 <- fromJSON('https://raw.githubusercontent.com/hsuchunhua/DE2/main/Week%203%20-%20AWS%20Serverless%20Services/TW-json/asrOutput_TW_17.json',flatten = T)
+
+n_tw <- melt(data.frame(str_length(tw_1$results$transcripts$transcript),
+                        str_length(tw_2$results$transcripts$transcript),
+                        str_length(tw_3$results$transcripts$transcript),
+                        str_length(tw_4$results$transcripts$transcript),
+                        str_length(tw_5$results$transcripts$transcript),
+                        str_length(tw_6$results$transcripts$transcript),
+                        str_length(tw_7$results$transcripts$transcript),
+                        str_length(tw_8$results$transcripts$transcript),
+                        str_length(tw_9$results$transcripts$transcript),
+                        str_length(tw_10$results$transcripts$transcript),
+                        str_length(tw_11$results$transcripts$transcript),
+                        str_length(tw_12$results$transcripts$transcript),
+                        str_length(tw_13$results$transcripts$transcript),
+                        str_length(tw_14$results$transcripts$transcript),
+                        str_length(tw_15$results$transcripts$transcript),
+                        str_length(tw_16$results$transcripts$transcript),
+                        str_length(tw_17$results$transcripts$transcript)))
+n_tw
+```
+
+# Sentiment analysis of tw_1
+```{r}
+tw_1_1 <- detect_sentiment(substring(tw_1$results$transcripts$transcript,1,
+                    round(str_length(tw_1$results$transcripts$transcript)/3)))
+tw_1_1 <- tw_1_1 %>% mutate(episode = 1,
+                            Nchar_episode = 
+                              str_length(tw_1$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_1$results$transcripts$transcript)/3))
+
+tw_1_2 <- detect_sentiment(substring(tw_1$results$transcripts$transcript,
+                  round(str_length(tw_1$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_1$results$transcripts$transcript)/3*2)))
+tw_1_2 <- tw_1_2 %>% mutate(episode = 1,
+                            Nchar_episode = 
+                              str_length(tw_1$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_1$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_1$results$transcripts$transcript)/3))
+
+tw_1_3 <- detect_sentiment(substring(tw_1$results$transcripts$transcript,
+                  round(str_length(tw_1$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_1$results$transcripts$transcript)))
+tw_1_3 <- tw_1_3 %>% mutate(episode = 1,
+                            Nchar_episode = 
+                              str_length(tw_1$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_1$results$transcripts$transcript)-
+                    round(str_length(tw_1$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_1_1, tw_1_2, tw_1_3)))
+```
+
+# Sentiment analysis of tw_2
+```{r}
+tw_2_1 <- detect_sentiment(substring(tw_2$results$transcripts$transcript,1,
+                    round(str_length(tw_2$results$transcripts$transcript)/4)))
+
+tw_2_1 <- tw_2_1 %>% mutate(episode = 2,
+                            Nchar_episode = 
+                              str_length(tw_2$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_2$results$transcripts$transcript)/4))
+
+
+tw_2_2 <- detect_sentiment(substring(tw_2$results$transcripts$transcript,
+                  round(str_length(tw_2$results$transcripts$transcript)/4)+1,
+                  round(str_length(tw_2$results$transcripts$transcript)/4*2)))
+tw_2_2 <- tw_2_2 %>% mutate(episode = 2,
+                            Nchar_episode = 
+                              str_length(tw_2$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_2$results$transcripts$transcript)/4*2)
+                    -round(str_length(tw_2$results$transcripts$transcript)/4))
+
+tw_2_3 <- detect_sentiment(substring(tw_2$results$transcripts$transcript,
+                round(str_length(tw_2$results$transcripts$transcript)/4*2)+1,
+                round(str_length(tw_2$results$transcripts$transcript)/4*3)))
+tw_2_3 <- tw_2_3 %>% mutate(episode = 2,
+                            Nchar_episode = 
+                              str_length(tw_2$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_2$results$transcripts$transcript)/4*3)
+                  -round(str_length(tw_2$results$transcripts$transcript)/4*2))
+
+tw_2_4 <- detect_sentiment(substring(tw_2$results$transcripts$transcript,
+                round(str_length(tw_2$results$transcripts$transcript)/4*3)+1,
+                str_length(tw_2$results$transcripts$transcript)))
+tw_2_4 <- tw_2_4 %>% mutate(episode = 2,
+                            Nchar_episode = 
+                              str_length(tw_2$results$transcripts$transcript),
+                            Nchar_section = 
+                    str_length(tw_2$results$transcripts$transcript)
+                  -round(str_length(tw_2$results$transcripts$transcript)/4*3))
+
+data.frame(rbindlist(list(tw_2_1, tw_2_2, tw_2_3, tw_2_4)))
+```
+
+# Sentiment analysis of tw_3
+```{r}
+tw_3_1 <- detect_sentiment(substring(tw_3$results$transcripts$transcript,1,
+                    round(str_length(tw_3$results$transcripts$transcript)/4)))
+
+tw_3_1 <- tw_3_1 %>% mutate(episode = 3,
+                            Nchar_episode = 
+                              str_length(tw_3$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_3$results$transcripts$transcript)/4))
+
+
+tw_3_2 <- detect_sentiment(substring(tw_3$results$transcripts$transcript,
+                  round(str_length(tw_3$results$transcripts$transcript)/4)+1,
+                  round(str_length(tw_3$results$transcripts$transcript)/4*2)))
+tw_3_2 <- tw_3_2 %>% mutate(episode = 3,
+                            Nchar_episode = 
+                              str_length(tw_3$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_3$results$transcripts$transcript)/4*2)
+                    -round(str_length(tw_3$results$transcripts$transcript)/4))
+
+tw_3_3 <- detect_sentiment(substring(tw_3$results$transcripts$transcript,
+                round(str_length(tw_3$results$transcripts$transcript)/4*2)+1,
+                round(str_length(tw_3$results$transcripts$transcript)/4*3)))
+tw_3_3 <- tw_3_3 %>% mutate(episode = 3,
+                            Nchar_episode = 
+                              str_length(tw_3$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_3$results$transcripts$transcript)/4*3)
+                  -round(str_length(tw_3$results$transcripts$transcript)/4*2))
+
+tw_3_4 <- detect_sentiment(substring(tw_3$results$transcripts$transcript,
+                round(str_length(tw_3$results$transcripts$transcript)/4*3)+1,
+                str_length(tw_3$results$transcripts$transcript)))
+tw_3_4 <- tw_3_4 %>% mutate(episode = 3,
+                            Nchar_episode = 
+                              str_length(tw_3$results$transcripts$transcript),
+                            Nchar_section = 
+                    str_length(tw_3$results$transcripts$transcript)
+                  -round(str_length(tw_3$results$transcripts$transcript)/4*3))
+
+data.frame(rbindlist(list(tw_3_1, tw_3_2, tw_3_3, tw_3_4)))
+```
+
+# Sentiment analysis of tw_4
+```{r}
+tw_4_1 <- detect_sentiment(substring(tw_4$results$transcripts$transcript,1,
+                    round(str_length(tw_4$results$transcripts$transcript)/3)))
+tw_4_1 <- tw_4_1 %>% mutate(episode = 4,
+                            Nchar_episode = 
+                              str_length(tw_4$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_4$results$transcripts$transcript)/3))
+
+tw_4_2 <- detect_sentiment(substring(tw_4$results$transcripts$transcript,
+                  round(str_length(tw_4$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_4$results$transcripts$transcript)/3*2)))
+tw_4_2 <- tw_4_2 %>% mutate(episode = 4,
+                            Nchar_episode = 
+                              str_length(tw_4$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_4$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_4$results$transcripts$transcript)/3))
+
+tw_4_3 <- detect_sentiment(substring(tw_4$results$transcripts$transcript,
+                  round(str_length(tw_4$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_4$results$transcripts$transcript)))
+tw_4_3 <- tw_4_3 %>% mutate(episode = 4,
+                            Nchar_episode = 
+                              str_length(tw_4$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_4$results$transcripts$transcript)-
+                    round(str_length(tw_4$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_4_1, tw_4_2, tw_4_3)))
+```
+
+# Sentiment analysis of tw_5
+```{r}
+tw_5_1 <- detect_sentiment(substring(tw_5$results$transcripts$transcript,1,
+                    round(str_length(tw_5$results$transcripts$transcript)/3)))
+tw_5_1 <- tw_5_1 %>% mutate(episode = 5,
+                            Nchar_episode = 
+                              str_length(tw_5$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_5$results$transcripts$transcript)/3))
+
+tw_5_2 <- detect_sentiment(substring(tw_5$results$transcripts$transcript,
+                  round(str_length(tw_5$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_5$results$transcripts$transcript)/3*2)))
+tw_5_2 <- tw_5_2 %>% mutate(episode = 5,
+                            Nchar_episode = 
+                              str_length(tw_5$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_5$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_5$results$transcripts$transcript)/3))
+
+tw_5_3 <- detect_sentiment(substring(tw_5$results$transcripts$transcript,
+                  round(str_length(tw_5$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_5$results$transcripts$transcript)))
+tw_5_3 <- tw_5_3 %>% mutate(episode = 5,
+                            Nchar_episode = 
+                              str_length(tw_5$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_5$results$transcripts$transcript)-
+                    round(str_length(tw_5$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_5_1, tw_5_2, tw_5_3)))
+```
+
+# Sentiment analysis of tw_6
+```{r}
+tw_6_1 <- detect_sentiment(substring(tw_6$results$transcripts$transcript,1,
+                    round(str_length(tw_6$results$transcripts$transcript)/3)))
+tw_6_1 <- tw_6_1 %>% mutate(episode = 6,
+                            Nchar_episode = 
+                              str_length(tw_6$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_6$results$transcripts$transcript)/3))
+
+tw_6_2 <- detect_sentiment(substring(tw_6$results$transcripts$transcript,
+                  round(str_length(tw_6$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_6$results$transcripts$transcript)/3*2)))
+tw_6_2 <- tw_6_2 %>% mutate(episode = 6,
+                            Nchar_episode = 
+                              str_length(tw_6$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_6$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_6$results$transcripts$transcript)/3))
+
+tw_6_3 <- detect_sentiment(substring(tw_6$results$transcripts$transcript,
+                  round(str_length(tw_6$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_6$results$transcripts$transcript)))
+tw_6_3 <- tw_6_3 %>% mutate(episode = 6,
+                            Nchar_episode = 
+                              str_length(tw_6$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_6$results$transcripts$transcript)-
+                    round(str_length(tw_6$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_6_1, tw_6_2, tw_6_3)))
+```
+
+# Sentiment analysis of tw_7
+```{r}
+tw_7_1 <- detect_sentiment(substring(tw_7$results$transcripts$transcript,1,
+                    round(str_length(tw_7$results$transcripts$transcript)/3)))
+tw_7_1 <- tw_7_1 %>% mutate(episode = 7,
+                            Nchar_episode = 
+                              str_length(tw_7$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_7$results$transcripts$transcript)/3))
+
+tw_7_2 <- detect_sentiment(substring(tw_7$results$transcripts$transcript,
+                  round(str_length(tw_7$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_7$results$transcripts$transcript)/3*2)))
+tw_7_2 <- tw_7_2 %>% mutate(episode = 7,
+                            Nchar_episode = 
+                              str_length(tw_7$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_7$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_7$results$transcripts$transcript)/3))
+
+tw_7_3 <- detect_sentiment(substring(tw_7$results$transcripts$transcript,
+                  round(str_length(tw_7$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_7$results$transcripts$transcript)))
+tw_7_3 <- tw_7_3 %>% mutate(episode = 7,
+                            Nchar_episode = 
+                              str_length(tw_7$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_7$results$transcripts$transcript)-
+                    round(str_length(tw_7$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_7_1, tw_7_2, tw_7_3)))
+```
+
+# Sentiment analysis of tw_8
+```{r}
+tw_8_1 <- detect_sentiment(substring(tw_8$results$transcripts$transcript,1,
+                    round(str_length(tw_8$results$transcripts$transcript)/3)))
+tw_8_1 <- tw_8_1 %>% mutate(episode = 8,
+                            Nchar_episode = 
+                              str_length(tw_8$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_8$results$transcripts$transcript)/3))
+
+tw_8_2 <- detect_sentiment(substring(tw_8$results$transcripts$transcript,
+                  round(str_length(tw_8$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_8$results$transcripts$transcript)/3*2)))
+tw_8_2 <- tw_8_2 %>% mutate(episode = 8,
+                            Nchar_episode = 
+                              str_length(tw_8$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_8$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_8$results$transcripts$transcript)/3))
+
+tw_8_3 <- detect_sentiment(substring(tw_8$results$transcripts$transcript,
+                  round(str_length(tw_8$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_8$results$transcripts$transcript)))
+tw_8_3 <- tw_8_3 %>% mutate(episode = 8,
+                            Nchar_episode = 
+                              str_length(tw_8$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_8$results$transcripts$transcript)-
+                    round(str_length(tw_8$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_8_1, tw_8_2, tw_8_3)))
+```
+
+# Sentiment analysis of tw_9
+```{r}
+tw_9_1 <- detect_sentiment(substring(tw_9$results$transcripts$transcript,1,
+                    round(str_length(tw_9$results$transcripts$transcript)/4)))
+
+tw_9_1 <- tw_9_1 %>% mutate(episode = 9,
+                            Nchar_episode = 
+                              str_length(tw_9$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_9$results$transcripts$transcript)/4))
+
+
+tw_9_2 <- detect_sentiment(substring(tw_9$results$transcripts$transcript,
+                  round(str_length(tw_9$results$transcripts$transcript)/4)+1,
+                  round(str_length(tw_9$results$transcripts$transcript)/4*2)))
+tw_9_2 <- tw_9_2 %>% mutate(episode = 9,
+                            Nchar_episode = 
+                              str_length(tw_9$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_9$results$transcripts$transcript)/4*2)
+                    -round(str_length(tw_9$results$transcripts$transcript)/4))
+
+tw_9_3 <- detect_sentiment(substring(tw_9$results$transcripts$transcript,
+                round(str_length(tw_9$results$transcripts$transcript)/4*2)+1,
+                round(str_length(tw_9$results$transcripts$transcript)/4*3)))
+tw_9_3 <- tw_9_3 %>% mutate(episode = 9,
+                            Nchar_episode = 
+                              str_length(tw_9$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_9$results$transcripts$transcript)/4*3)
+                  -round(str_length(tw_9$results$transcripts$transcript)/4*2))
+
+tw_9_4 <- detect_sentiment(substring(tw_9$results$transcripts$transcript,
+                round(str_length(tw_9$results$transcripts$transcript)/4*3)+1,
+                str_length(tw_9$results$transcripts$transcript)))
+tw_9_4 <- tw_9_4 %>% mutate(episode = 9,
+                            Nchar_episode = 
+                              str_length(tw_9$results$transcripts$transcript),
+                            Nchar_section = 
+                    str_length(tw_9$results$transcripts$transcript)
+                  -round(str_length(tw_9$results$transcripts$transcript)/4*3))
+
+data.frame(rbindlist(list(tw_9_1, tw_9_2, tw_9_3, tw_9_4)))
+```
+
+# Sentiment analysis of tw_10
+```{r}
+tw_10_1 <- detect_sentiment(substring(tw_10$results$transcripts$transcript,1,
+                    round(str_length(tw_10$results$transcripts$transcript)/3)))
+tw_10_1 <- tw_10_1 %>% mutate(episode = 10,
+                            Nchar_episode = 
+                              str_length(tw_10$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_10$results$transcripts$transcript)/3))
+
+tw_10_2 <- detect_sentiment(substring(tw_10$results$transcripts$transcript,
+                  round(str_length(tw_10$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_10$results$transcripts$transcript)/3*2)))
+tw_10_2 <- tw_10_2 %>% mutate(episode = 10,
+                            Nchar_episode = 
+                              str_length(tw_10$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_10$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_10$results$transcripts$transcript)/3))
+
+tw_10_3 <- detect_sentiment(substring(tw_10$results$transcripts$transcript,
+                  round(str_length(tw_10$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_10$results$transcripts$transcript)))
+tw_10_3 <- tw_10_3 %>% mutate(episode = 10,
+                            Nchar_episode = 
+                              str_length(tw_10$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_10$results$transcripts$transcript)-
+                    round(str_length(tw_10$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_10_1, tw_10_2, tw_10_3)))
+```
+
+# Sentiment analysis of tw_11
+```{r}
+tw_11_1 <- detect_sentiment(substring(tw_11$results$transcripts$transcript,1,
+                    round(str_length(tw_11$results$transcripts$transcript)/3)))
+tw_11_1 <- tw_11_1 %>% mutate(episode = 11,
+                            Nchar_episode = 
+                              str_length(tw_11$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_11$results$transcripts$transcript)/3))
+
+tw_11_2 <- detect_sentiment(substring(tw_11$results$transcripts$transcript,
+                  round(str_length(tw_11$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_11$results$transcripts$transcript)/3*2)))
+tw_11_2 <- tw_11_2 %>% mutate(episode = 11,
+                            Nchar_episode = 
+                              str_length(tw_11$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_11$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_11$results$transcripts$transcript)/3))
+
+tw_11_3 <- detect_sentiment(substring(tw_11$results$transcripts$transcript,
+                  round(str_length(tw_11$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_11$results$transcripts$transcript)))
+tw_11_3 <- tw_11_3 %>% mutate(episode = 11,
+                            Nchar_episode = 
+                              str_length(tw_11$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_11$results$transcripts$transcript)-
+                    round(str_length(tw_11$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_11_1, tw_11_2, tw_11_3)))
+```
+
+# Sentiment analysis of tw_12
+```{r}
+tw_12_1 <- detect_sentiment(substring(tw_12$results$transcripts$transcript,1,
+                    round(str_length(tw_12$results$transcripts$transcript)/3)))
+tw_12_1 <- tw_12_1 %>% mutate(episode = 12,
+                            Nchar_episode = 
+                              str_length(tw_12$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_12$results$transcripts$transcript)/3))
+
+tw_12_2 <- detect_sentiment(substring(tw_12$results$transcripts$transcript,
+                  round(str_length(tw_12$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_12$results$transcripts$transcript)/3*2)))
+tw_12_2 <- tw_12_2 %>% mutate(episode = 12,
+                            Nchar_episode = 
+                              str_length(tw_12$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_12$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_12$results$transcripts$transcript)/3))
+
+tw_12_3 <- detect_sentiment(substring(tw_12$results$transcripts$transcript,
+                  round(str_length(tw_12$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_12$results$transcripts$transcript)))
+tw_12_3 <- tw_12_3 %>% mutate(episode = 12,
+                            Nchar_episode = 
+                              str_length(tw_12$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_12$results$transcripts$transcript)-
+                    round(str_length(tw_12$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_12_1, tw_12_2, tw_12_3)))
+```
+
+# Sentiment analysis of tw_13
+```{r}
+tw_13_1 <- detect_sentiment(substring(tw_13$results$transcripts$transcript,1,
+                    round(str_length(tw_13$results$transcripts$transcript)/3)))
+tw_13_1 <- tw_13_1 %>% mutate(episode = 13,
+                            Nchar_episode = 
+                              str_length(tw_13$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_13$results$transcripts$transcript)/3))
+
+tw_13_2 <- detect_sentiment(substring(tw_13$results$transcripts$transcript,
+                  round(str_length(tw_13$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_13$results$transcripts$transcript)/3*2)))
+tw_13_2 <- tw_13_2 %>% mutate(episode = 13,
+                            Nchar_episode = 
+                              str_length(tw_13$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_13$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_13$results$transcripts$transcript)/3))
+
+tw_13_3 <- detect_sentiment(substring(tw_13$results$transcripts$transcript,
+                  round(str_length(tw_13$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_13$results$transcripts$transcript)))
+tw_13_3 <- tw_13_3 %>% mutate(episode = 13,
+                            Nchar_episode = 
+                              str_length(tw_13$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_13$results$transcripts$transcript)-
+                    round(str_length(tw_13$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_13_1, tw_13_2, tw_13_3)))
+```
+
+# Sentiment analysis of tw_14
+```{r}
+tw_14_1 <- detect_sentiment(substring(tw_14$results$transcripts$transcript,1,
+                    round(str_length(tw_14$results$transcripts$transcript)/3)))
+tw_14_1 <- tw_14_1 %>% mutate(episode = 14,
+                            Nchar_episode = 
+                              str_length(tw_14$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_14$results$transcripts$transcript)/3))
+
+tw_14_2 <- detect_sentiment(substring(tw_14$results$transcripts$transcript,
+                  round(str_length(tw_14$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_14$results$transcripts$transcript)/3*2)))
+tw_14_2 <- tw_14_2 %>% mutate(episode = 14,
+                            Nchar_episode = 
+                              str_length(tw_14$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_14$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_14$results$transcripts$transcript)/3))
+
+tw_14_3 <- detect_sentiment(substring(tw_14$results$transcripts$transcript,
+                  round(str_length(tw_14$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_14$results$transcripts$transcript)))
+tw_14_3 <- tw_14_3 %>% mutate(episode = 14,
+                            Nchar_episode = 
+                              str_length(tw_14$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_14$results$transcripts$transcript)-
+                    round(str_length(tw_14$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_14_1, tw_14_2, tw_14_3)))
+```
+
+# Sentiment analysis of tw_15
+```{r}
+tw_15_1 <- detect_sentiment(substring(tw_15$results$transcripts$transcript,1,
+                    round(str_length(tw_15$results$transcripts$transcript)/3)))
+tw_15_1 <- tw_15_1 %>% mutate(episode = 15,
+                            Nchar_episode = 
+                              str_length(tw_15$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_15$results$transcripts$transcript)/3))
+
+tw_15_2 <- detect_sentiment(substring(tw_15$results$transcripts$transcript,
+                  round(str_length(tw_15$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_15$results$transcripts$transcript)/3*2)))
+tw_15_2 <- tw_15_2 %>% mutate(episode = 15,
+                            Nchar_episode = 
+                              str_length(tw_15$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_15$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_15$results$transcripts$transcript)/3))
+
+tw_15_3 <- detect_sentiment(substring(tw_15$results$transcripts$transcript,
+                  round(str_length(tw_15$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_15$results$transcripts$transcript)))
+tw_15_3 <- tw_15_3 %>% mutate(episode = 15,
+                            Nchar_episode = 
+                              str_length(tw_15$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_15$results$transcripts$transcript)-
+                    round(str_length(tw_15$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_15_1, tw_15_2, tw_15_3)))
+```
+
+# Sentiment analysis of tw_16
+```{r}
+tw_16_1 <- detect_sentiment(substring(tw_16$results$transcripts$transcript,1,
+                    round(str_length(tw_16$results$transcripts$transcript)/3)))
+tw_16_1 <- tw_16_1 %>% mutate(episode = 16,
+                            Nchar_episode = 
+                              str_length(tw_16$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_16$results$transcripts$transcript)/3))
+
+tw_16_2 <- detect_sentiment(substring(tw_16$results$transcripts$transcript,
+                  round(str_length(tw_16$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_16$results$transcripts$transcript)/3*2)))
+tw_16_2 <- tw_16_2 %>% mutate(episode = 16,
+                            Nchar_episode = 
+                              str_length(tw_16$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_16$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_16$results$transcripts$transcript)/3))
+
+tw_16_3 <- detect_sentiment(substring(tw_16$results$transcripts$transcript,
+                  round(str_length(tw_16$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_16$results$transcripts$transcript)))
+tw_16_3 <- tw_16_3 %>% mutate(episode = 16,
+                            Nchar_episode = 
+                              str_length(tw_16$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_16$results$transcripts$transcript)-
+                    round(str_length(tw_16$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_16_1, tw_16_2, tw_16_3)))
+```
+
+# Sentiment analysis of tw_17
+```{r}
+tw_17_1 <- detect_sentiment(substring(tw_17$results$transcripts$transcript,1,
+                    round(str_length(tw_17$results$transcripts$transcript)/3)))
+tw_17_1 <- tw_17_1 %>% mutate(episode = 17,
+                            Nchar_episode = 
+                              str_length(tw_17$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_17$results$transcripts$transcript)/3))
+
+tw_17_2 <- detect_sentiment(substring(tw_17$results$transcripts$transcript,
+                  round(str_length(tw_17$results$transcripts$transcript)/3)+1,
+                  round(str_length(tw_17$results$transcripts$transcript)/3*2)))
+tw_17_2 <- tw_17_2 %>% mutate(episode = 17,
+                            Nchar_episode = 
+                              str_length(tw_17$results$transcripts$transcript),
+                            Nchar_section = 
+                    round(str_length(tw_17$results$transcripts$transcript)/3*2)-
+                    round(str_length(tw_17$results$transcripts$transcript)/3))
+
+tw_17_3 <- detect_sentiment(substring(tw_17$results$transcripts$transcript,
+                  round(str_length(tw_17$results$transcripts$transcript)/3*2)+1,
+                  str_length(tw_17$results$transcripts$transcript)))
+tw_17_3 <- tw_17_3 %>% mutate(episode = 17,
+                            Nchar_episode = 
+                              str_length(tw_17$results$transcripts$transcript),
+                            Nchar_section = 
+                              str_length(tw_17$results$transcripts$transcript)-
+                    round(str_length(tw_17$results$transcripts$transcript)/3*2))
+
+data.frame(rbindlist(list(tw_17_1, tw_17_2, tw_17_3)))
+```
+
+# Calculate sentiment for all-tw-combined and each episode
+```{r}
+df_tw <- rbind.data.frame(tw_1_1, tw_1_2, tw_1_3,   
+                          tw_2_1, tw_2_2, tw_2_3, tw_2_4,
+                          tw_3_1, tw_3_2, tw_3_3, tw_3_4,
+                          tw_4_1, tw_4_2, tw_4_3,   tw_5_1, tw_5_2, tw_5_3,
+                          tw_6_1, tw_6_2, tw_6_3,   tw_7_1, tw_7_2, tw_7_3,
+                          tw_8_1, tw_8_2, tw_8_3,
+                          tw_9_1, tw_9_2, tw_9_3, tw_9_4,
+                          tw_10_1, tw_10_2, tw_10_3,  tw_11_1, tw_11_2, tw_11_3,
+                          tw_12_1, tw_12_2, tw_12_3,  tw_13_1, tw_13_2, tw_13_3,
+                          tw_14_1, tw_14_2, tw_14_3,  tw_15_1, tw_15_2, tw_15_3,
+                          tw_16_1, tw_16_2, tw_16_3,  tw_17_1, tw_17_2, tw_17_3)
+
+df_tw <- df_tw %>% mutate(
+                 Mixed_in_episode = Mixed * Nchar_section / Nchar_episode,
+                 Negative_in_episode = Negative * Nchar_section / Nchar_episode,
+                 Neutral_in_episode = Neutral * Nchar_section / Nchar_episode,
+                 Positive_in_episode = Positive * Nchar_section / Nchar_episode)
+```
+
+# Organize it into episode data
+```{r}
+df_tw_epi <- df_tw %>% group_by(episode) %>% 
+  summarise(Mixed = sum(Mixed_in_episode),
+            Negative = sum(Negative_in_episode),
+            Neutral = sum(Neutral_in_episode),
+            Positive = sum(Positive_in_episode),.groups = 'keep') %>% 
+    distinct() %>% 
+    melt(id.var = 'episode', variable.name = "Sentiment",
+         value.name = "percentage") %>% arrange(episode)
+```
+
+# Stacked bar Chart
+```{r}
+ggplot(df_tw_epi, aes(x= episode, y= percentage, fill = Sentiment)) +
+  geom_bar(position="fill", stat="identity") +
+  labs(x= "Episode No.",
+       y= "Percentage",
+       title = "Sentiment of episodes in Chapter Greed Island",
+       subtitle = "In Mandarin(TW) version") +
+  scale_x_continuous(breaks = seq(1, 17, by = 1)) +
+  scale_y_continuous(labels = scales::percent, breaks = seq(0, 1, by = 0.2)) +
+  scale_fill_manual(breaks= c("Positive", "Negative", "Mixed", "Neutral"),
+                    values = c("seagreen3", "coral2","bisque3", "gray86")) +
+  theme_classic()
+```
+
+# Create data frame for whole chapter in TW version
+```{r}
+df_tw <- df_tw %>% mutate(
+              Mixed_in_chapter = Mixed * Nchar_section / sum(n_tw$value),
+              Negative_in_chapter = Negative * Nchar_section / sum(n_tw$value),
+              Neutral_in_chapter = Neutral * Nchar_section / sum(n_tw$value),
+              Positive_in_chapter = Positive * Nchar_section / sum(n_tw$value),
+              Ver = "TW")
+
+df_tw_cha <- df_tw %>% group_by(Ver) %>% 
+  summarise(Mixed = sum(Mixed_in_chapter),
+            Negative = sum(Negative_in_chapter),
+            Neutral = sum(Neutral_in_chapter),
+            Positive = sum(Positive_in_chapter),.groups = 'keep') %>% 
+    melt(id.var = 'Ver', variable.name = "Sentiment",
+         value.name = "percentage")
+```
+
+# Compare Sentiment of whole Chapter in 2 version
+```{r}
+ver_com <- rbind.data.frame(mutate(df_jp_cha, ver = "JP"),
+                            mutate(df_tw_cha, ver = "TW"))
+
+ggplot(ver_com, aes(x= Ver, y= percentage, fill = Sentiment)) +
+  geom_bar(position="dodge", stat="identity", width = 0.5) +
+  labs(x= "Language Version",
+       y= "Percentage",
+       title = "Sentiment of chapter Greed Island",
+       subtitle = "Comparing versions of Japanese and Mandarin(TW)") +
+  scale_y_continuous(labels = scales::percent, breaks = seq(0, 1, by = 0.1)) +
+  scale_fill_manual(breaks= c("Positive", "Negative", "Mixed", "Neutral"),
+                    values = c("seagreen3", "coral2","bisque3", "gray86")) +
+  theme_classic()
+```
